@@ -6,8 +6,8 @@
 
 Adafruit_DRV2605 drv;
 
-#define I2C_SDA 17
-#define I2C_SCL 18
+#define I2C_SDA 4
+#define I2C_SCL 5
 #define I2C_CLK 100000
 
 
@@ -34,21 +34,51 @@ Adafruit_DRV2605 drv;
  * #define LV_USE_PERF_MONITOR 1
  ******************************************************************************/
 #include <lvgl.h>
+////////////////////////////////////////////////
+#include "ui.h"
+#define SCR_LOAD_ANIM_TIME 300 // ms
+#define CHART_SERIAL_VALUE_COUNT 60
 
+#define LEFT_BTN_PIN 6
+#define RIGHT_BTN_PIN 7
+
+#define GET_VALUE_INTERVAL 60000 // 1 minute
+
+static int32_t  temp, humidity, pressure, gas;  // BME readings
+static char     buf[16];                        // sprintf text buffer
+static float    alt;                            // Temporary variable
+static uint16_t loopCounter = 0;                // Display iterations
+
+static uint32_t screenWidth;
+static uint32_t screenHeight;
+static lv_disp_draw_buf_t draw_buf;
+static lv_color_t *disp_draw_buf;
+static lv_color_t *disp_draw_buf2;
+static lv_disp_drv_t disp_drv;
+static lv_chart_series_t * ser_temps;
+static lv_chart_series_t * ser_humid;
+static lv_chart_series_t * ser_air_q;
+static long last_value_ms = -GET_VALUE_INTERVAL;
+static long last_point_ms = -GET_VALUE_INTERVAL;
+static uint8_t current_screen = 1;
+static long last_pressed = -GET_VALUE_INTERVAL;
+static long chart_value_interval = GET_VALUE_INTERVAL; // initial interval is same as GET_VALUE_INTERVAL, double after each serials cycle
+
+/////////////////////////////////////////////////
 #include <Arduino_GFX_Library.h>
 
-#define TFT_BLK 45
-#define TFT_RES 11
+#define TFT_BLK 12
+#define TFT_RES 9
 
-#define TFT_CS 15
-#define TFT_MOSI 13 // n/a
-#define TFT_MISO 12
+#define TFT_CS 10
+#define TFT_MOSI 13
+#define TFT_MISO 12 // n/a
 #define TFT_SCLK 14
-#define TFT_DC 21
+#define TFT_DC 11
 
 #define GFX_BL TFT_BLK
 
-Arduino_ESP32SPI *bus = new Arduino_ESP32SPI(TFT_DC, TFT_CS, TFT_SCLK, TFT_MOSI, TFT_MISO, HSPI, true); // Constructor
+Arduino_ESP32SPI *bus = new Arduino_ESP32SPI(TFT_DC, TFT_CS, TFT_SCLK, TFT_MOSI, GFX_NOT_DEFINED, HSPI, true); // Constructor
 
 Arduino_GFX *gfx = new Arduino_GC9A01(bus, TFT_RES, 0 /* rotation */, true /* IPS */);
 
@@ -57,11 +87,11 @@ Arduino_GFX *gfx = new Arduino_GC9A01(bus, TFT_RES, 0 /* rotation */, true /* IP
  ******************************************************************************/
 
 /* Change to your screen resolution */
-static uint32_t screenWidth;
-static uint32_t screenHeight;
-static lv_disp_draw_buf_t draw_buf;
-static lv_color_t *disp_draw_buf;
-static lv_disp_drv_t disp_drv;
+//static uint32_t screenWidth;
+//static uint32_t screenHeight;
+//static lv_disp_draw_buf_t draw_buf;
+//static lv_color_t *disp_draw_buf;
+//static lv_disp_drv_t disp_drv;
 static unsigned long last_ms;
 
 /* Display flushing */
@@ -77,6 +107,56 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 #endif
 
    lv_disp_flush_ready(disp);
+}
+
+void left_btn_pressed() {
+  if ((millis() - last_pressed) >= SCR_LOAD_ANIM_TIME) {
+    switch(current_screen) {
+      case 1:
+        lv_scr_load_anim(ui_Screen4, LV_SCR_LOAD_ANIM_MOVE_RIGHT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 4;
+        break;
+      case 2:
+        lv_scr_load_anim(ui_Screen1, LV_SCR_LOAD_ANIM_MOVE_RIGHT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 1;
+        break;
+      case 3:
+        lv_scr_load_anim(ui_Screen2, LV_SCR_LOAD_ANIM_MOVE_RIGHT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 2;
+        break;
+      default:
+        lv_scr_load_anim(ui_Screen3, LV_SCR_LOAD_ANIM_MOVE_RIGHT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 3;
+        break;
+    }
+
+    last_pressed = millis();
+  }
+}
+
+void right_btn_pressed() {
+  if ((millis() - last_pressed) >= SCR_LOAD_ANIM_TIME) {
+    switch(current_screen) {
+      case 1:
+        lv_scr_load_anim(ui_Screen2, LV_SCR_LOAD_ANIM_MOVE_LEFT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 2;
+        break;
+      case 2:
+        lv_scr_load_anim(ui_Screen3, LV_SCR_LOAD_ANIM_MOVE_LEFT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 3;
+        break;
+      case 3:
+        lv_scr_load_anim(ui_Screen4, LV_SCR_LOAD_ANIM_MOVE_LEFT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 4;
+        break;
+      default:
+        lv_scr_load_anim(ui_Screen1, LV_SCR_LOAD_ANIM_MOVE_LEFT, SCR_LOAD_ANIM_TIME, 0, false);
+        current_screen = 1;
+        break;
+    }
+
+    last_pressed = millis();
+  }
 }
 
 
@@ -118,8 +198,8 @@ void Task_LRA(void *pvParameters);
 
 
 void setup() {
-    Wire.setPins(4,5);
-//  Wire.begin(I2C_SDA, I2C_SCL);
+//    Wire.setPins(4,5);
+    Wire.begin(I2C_SDA, I2C_SCL);
     Serial.begin(115200);
     Serial.println("DRV2605 Audio responsive test");
     Serial.println("Adafruit DRV2605 Basic test");
@@ -178,27 +258,129 @@ void setup() {
         indev_drv.type = LV_INDEV_TYPE_POINTER;
         lv_indev_drv_register(&indev_drv);
 
-//      lv_demo_benchmark();
+        /* Init SquareLine prepared UI */
+        ui_init();
+
+        /* Init Charts */
+        lv_chart_set_type(ui_Screen2_Chart1, LV_CHART_TYPE_LINE);
+        lv_chart_set_type(ui_Screen3_Chart1, LV_CHART_TYPE_LINE);
+        lv_chart_set_type(ui_Screen4_Chart1, LV_CHART_TYPE_LINE);
+
+        lv_chart_set_range(ui_Screen2_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 50);
+        lv_chart_set_range(ui_Screen3_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+        lv_chart_set_range(ui_Screen4_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+
+        lv_chart_set_axis_tick(ui_Screen2_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 5, 6, 1, true, 24);
+        lv_chart_set_axis_tick(ui_Screen3_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 6, 2, true, 28);
+        lv_chart_set_axis_tick(ui_Screen4_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 6, 2, true, 28);
+
+        lv_chart_set_point_count(ui_Screen2_Chart1, CHART_SERIAL_VALUE_COUNT);
+        lv_chart_set_point_count(ui_Screen3_Chart1, CHART_SERIAL_VALUE_COUNT);
+        lv_chart_set_point_count(ui_Screen4_Chart1, CHART_SERIAL_VALUE_COUNT);
+
+        lv_chart_set_update_mode(ui_Screen2_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
+        lv_chart_set_update_mode(ui_Screen3_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
+        lv_chart_set_update_mode(ui_Screen4_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
+
+        lv_obj_set_style_size(ui_Screen2_Chart1, 0, LV_PART_INDICATOR);
+        lv_obj_set_style_size(ui_Screen3_Chart1, 0, LV_PART_INDICATOR);
+        lv_obj_set_style_size(ui_Screen4_Chart1, 0, LV_PART_INDICATOR);
+
+        /* Init data series */
+        ser_temps = lv_chart_add_series(ui_Screen2_Chart1, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
+        ser_humid = lv_chart_add_series(ui_Screen3_Chart1, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_PRIMARY_Y);
+        ser_air_q = lv_chart_add_series(ui_Screen4_Chart1, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_PRIMARY_Y);
+
+        lv_chart_set_all_value(ui_Screen2_Chart1, ser_temps, 0);
+        lv_chart_set_all_value(ui_Screen3_Chart1, ser_humid, 0);
+        lv_chart_set_all_value(ui_Screen4_Chart1, ser_air_q, 0);
 
         Serial.println("Setup done");
     }
     last_ms = millis();
 
-    xTaskCreatePinnedToCore(Task_TFT, "Task_TFT", 20480, NULL, 0, NULL, 0);
-    xTaskCreatePinnedToCore(Task_LRA, "Task_touch", 10240, NULL, 3, NULL, 1);
+    /* Init buttons */
+    pinMode(LEFT_BTN_PIN, INPUT_PULLUP);
+    attachInterrupt(LEFT_BTN_PIN, left_btn_pressed, FALLING);
+    pinMode(RIGHT_BTN_PIN, INPUT_PULLUP);
+    attachInterrupt(RIGHT_BTN_PIN, right_btn_pressed, FALLING);
+
+    xTaskCreatePinnedToCore(Task_TFT, "Task_TFT", 20480, NULL, 10, NULL, 0);
+    xTaskCreatePinnedToCore(Task_LRA, "Task_touch", 10240, NULL, 12, NULL, 1);
 
 }
 
 void loop()
 {
     lv_timer_handler(); /* let the GUI do its work */
-    delay(5);
+    if ((millis() - last_value_ms) < GET_VALUE_INTERVAL){
+        delay(5);
+    }else{
+        last_value_ms = millis();
+    }
+   
+}
+
+void Send_Temp(void)
+{
+    Serial1.write(17);
+    Serial1.write(3);
+    Serial1.write(1);
+    Serial1.write(152);
 }
 
 void Task_TFT(void *pvParameters)
 {
+    char temp_buf[10];
+    int dest_temp, body_temp, temp_cnt;
+    long value_ms = -GET_VALUE_INTERVAL;
+    long point_ms = -GET_VALUE_INTERVAL;
+    Serial1.begin(19200,SERIAL_8N1, 18, 17);
+
+    delay(200);
+    Send_Temp();
+    delay(200);
+    Send_Temp();
     while (1){
-        delay(5);
+        //시리얼 1번에 데이터가 들어오면
+        if(Serial1.available()){
+            temp_buf[temp_cnt] = Serial1.read();
+            if(temp_buf[temp_cnt] == 0x9c){
+                Serial.println("receive ok");
+                dest_temp = 0;
+                dest_temp += temp_buf[2] << 8;
+                dest_temp += temp_buf[3] << 0;
+                body_temp = 0;
+                body_temp += temp_buf[4] << 8;
+                body_temp += temp_buf[5] << 0;
+    //          Serial.print(dest_temp);
+    //          Serial.print(',');
+    //          Serial.print(body_temp);
+    //          Serial.println("---");
+
+                sprintf(buf, "%2d",(int8_t)(dest_temp / 100));   // Temp in decidegrees
+                lv_arc_set_value(ui_Screen1_Arc_Temps, dest_temp / 100);
+                lv_label_set_text(ui_Screen1_Label_Temps, buf);
+
+                sprintf(buf, "%2d", (int8_t)(body_temp / 100));  // Humidity milli-pct
+                lv_arc_set_value(ui_Screen1_Arc_Humid, body_temp / 100);
+                lv_label_set_text(ui_Screen1_Label_Humid, buf);
+
+                sprintf(buf, "%2d.%02d\nhPa", (int16_t)(dest_temp / 100), (uint8_t)(dest_temp % 100));  // Pressure Pascals
+                lv_label_set_text(ui_Screen1_Label_Pressu, buf);
+
+                lv_chart_set_next_value(ui_Screen2_Chart1, ser_temps, dest_temp / 100);
+                lv_chart_set_next_value(ui_Screen3_Chart1, ser_humid, body_temp / 100);
+                lv_chart_set_next_value(ui_Screen4_Chart1, ser_air_q, gas / 10000);
+
+                temp_cnt = 0;
+                Send_Temp();          
+            }
+            else{
+                temp_cnt++;
+            }
+        }
+        delay(10); 
     }
 }
 
