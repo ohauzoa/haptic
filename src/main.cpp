@@ -346,7 +346,7 @@ void Task_TFT(void *pvParameters)
         if(Serial1.available()){
             temp_buf[temp_cnt] = Serial1.read();
             if(temp_buf[temp_cnt] == 0x9c){
-                Serial.println("receive ok");
+    //            Serial.println("receive ok");
                 dest_temp = 0;
                 dest_temp += temp_buf[2] << 8;
                 dest_temp += temp_buf[3] << 0;
