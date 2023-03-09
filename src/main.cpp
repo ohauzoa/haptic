@@ -35,8 +35,8 @@ Adafruit_DRV2605 drv;
  ******************************************************************************/
 #include <lvgl.h>
 ////////////////////////////////////////////////
-#include "ui.h"
-#define SCR_LOAD_ANIM_TIME 300 // ms
+#include <ui.h>
+#define SCR_LOAD_ANIM_TIME 600 // ms
 #define CHART_SERIAL_VALUE_COUNT 60
 
 #define LEFT_BTN_PIN 6
@@ -231,7 +231,7 @@ void setup() {
     screenWidth = gfx->width();
     screenHeight = gfx->height();
 #ifdef ESP32
-    disp_draw_buf = (lv_color_t *)heap_caps_malloc(sizeof(lv_color_t) * screenWidth * 30, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    disp_draw_buf = (lv_color_t *)heap_caps_malloc(sizeof(lv_color_t) * screenWidth * 120, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 #else
     disp_draw_buf = (lv_color_t *)malloc(sizeof(lv_color_t) * screenWidth * 10);
 #endif
@@ -262,38 +262,38 @@ void setup() {
         ui_init();
 
         /* Init Charts */
-        lv_chart_set_type(ui_Screen2_Chart1, LV_CHART_TYPE_LINE);
-        lv_chart_set_type(ui_Screen3_Chart1, LV_CHART_TYPE_LINE);
-        lv_chart_set_type(ui_Screen4_Chart1, LV_CHART_TYPE_LINE);
+//        lv_chart_set_type(ui_Screen2_Chart1, LV_CHART_TYPE_LINE);
+//        lv_chart_set_type(ui_Screen3_Chart1, LV_CHART_TYPE_LINE);
+//        lv_chart_set_type(ui_Screen4_Chart1, LV_CHART_TYPE_LINE);
 
-        lv_chart_set_range(ui_Screen2_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 50);
-        lv_chart_set_range(ui_Screen3_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
-        lv_chart_set_range(ui_Screen4_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+//        lv_chart_set_range(ui_Screen2_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 50);
+//        lv_chart_set_range(ui_Screen3_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+//        lv_chart_set_range(ui_Screen4_Chart1, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
 
-        lv_chart_set_axis_tick(ui_Screen2_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 5, 6, 1, true, 24);
-        lv_chart_set_axis_tick(ui_Screen3_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 6, 2, true, 28);
-        lv_chart_set_axis_tick(ui_Screen4_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 6, 2, true, 28);
+//        lv_chart_set_axis_tick(ui_Screen2_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 5, 6, 1, true, 24);
+//        lv_chart_set_axis_tick(ui_Screen3_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 6, 2, true, 28);
+//        lv_chart_set_axis_tick(ui_Screen4_Chart1, LV_CHART_AXIS_PRIMARY_Y, 5, 2, 6, 2, true, 28);
 
-        lv_chart_set_point_count(ui_Screen2_Chart1, CHART_SERIAL_VALUE_COUNT);
-        lv_chart_set_point_count(ui_Screen3_Chart1, CHART_SERIAL_VALUE_COUNT);
-        lv_chart_set_point_count(ui_Screen4_Chart1, CHART_SERIAL_VALUE_COUNT);
+//        lv_chart_set_point_count(ui_Screen2_Chart1, CHART_SERIAL_VALUE_COUNT);
+//        lv_chart_set_point_count(ui_Screen3_Chart1, CHART_SERIAL_VALUE_COUNT);
+//        lv_chart_set_point_count(ui_Screen4_Chart1, CHART_SERIAL_VALUE_COUNT);
 
-        lv_chart_set_update_mode(ui_Screen2_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
-        lv_chart_set_update_mode(ui_Screen3_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
-        lv_chart_set_update_mode(ui_Screen4_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
-
-        lv_obj_set_style_size(ui_Screen2_Chart1, 0, LV_PART_INDICATOR);
-        lv_obj_set_style_size(ui_Screen3_Chart1, 0, LV_PART_INDICATOR);
-        lv_obj_set_style_size(ui_Screen4_Chart1, 0, LV_PART_INDICATOR);
+//        lv_chart_set_update_mode(ui_Screen2_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
+//        lv_chart_set_update_mode(ui_Screen3_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
+//        lv_chart_set_update_mode(ui_Screen4_Chart1, LV_CHART_UPDATE_MODE_SHIFT);
+        /*Do not display points on the data*/            
+        lv_obj_set_style_size(ui_Chart2, 0, LV_PART_INDICATOR);
+//        lv_obj_set_style_size(ui_Screen3_Chart1, 0, LV_PART_INDICATOR);
+//        lv_obj_set_style_size(ui_Screen4_Chart1, 0, LV_PART_INDICATOR);
 
         /* Init data series */
-        ser_temps = lv_chart_add_series(ui_Screen2_Chart1, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
-        ser_humid = lv_chart_add_series(ui_Screen3_Chart1, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_PRIMARY_Y);
-        ser_air_q = lv_chart_add_series(ui_Screen4_Chart1, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_PRIMARY_Y);
+//        ser_temps = lv_chart_add_series(ui_Chart2, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
+//        ser_humid = lv_chart_add_series(ui_Chart2, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_PRIMARY_Y);
+//        ser_air_q = lv_chart_add_series(ui_Screen4_Chart1, lv_palette_main(LV_PALETTE_GREEN), LV_CHART_AXIS_PRIMARY_Y);
 
-        lv_chart_set_all_value(ui_Screen2_Chart1, ser_temps, 0);
-        lv_chart_set_all_value(ui_Screen3_Chart1, ser_humid, 0);
-        lv_chart_set_all_value(ui_Screen4_Chart1, ser_air_q, 0);
+//        lv_chart_set_all_value(ui_Chart2, ser_temps, 0);
+//        lv_chart_set_all_value(ui_Chart2, ser_humid, 0);
+//        lv_chart_set_all_value(ui_Screen4_Chart1, ser_air_q, 0);
 
         Serial.println("Setup done");
     }
@@ -305,8 +305,8 @@ void setup() {
     pinMode(RIGHT_BTN_PIN, INPUT_PULLUP);
     attachInterrupt(RIGHT_BTN_PIN, right_btn_pressed, FALLING);
 
-    xTaskCreatePinnedToCore(Task_TFT, "Task_TFT", 20480, NULL, 10, NULL, 0);
-    xTaskCreatePinnedToCore(Task_LRA, "Task_touch", 10240, NULL, 12, NULL, 1);
+    xTaskCreatePinnedToCore(Task_TFT, "Task_TFT", 40960, NULL, 10, NULL, 0);
+//    xTaskCreatePinnedToCore(Task_LRA, "Task_touch", 10240, NULL, 12, NULL, 1);
 
 }
 
@@ -360,18 +360,24 @@ void Task_TFT(void *pvParameters)
 
                 sprintf(buf, "%2d",(int8_t)(dest_temp / 100));   // Temp in decidegrees
                 lv_arc_set_value(ui_Screen1_Arc_Temps, dest_temp / 100);
-                lv_label_set_text(ui_Screen1_Label_Temps, buf);
+                //lv_label_set_text(ui_Label_Skin, buf);
 
                 sprintf(buf, "%2d", (int8_t)(body_temp / 100));  // Humidity milli-pct
-                lv_arc_set_value(ui_Screen1_Arc_Humid, body_temp / 100);
-                lv_label_set_text(ui_Screen1_Label_Humid, buf);
+                lv_arc_set_value(ui_Screen1_Arc_Body, body_temp / 100);
+                //lv_label_set_text(ui_Screen1_Label_Humid, buf);
 
-                sprintf(buf, "%2d.%02d\nhPa", (int16_t)(dest_temp / 100), (uint8_t)(dest_temp % 100));  // Pressure Pascals
-                lv_label_set_text(ui_Screen1_Label_Pressu, buf);
+                sprintf(buf, "%2d.%01d", (int16_t)(dest_temp / 100), (uint8_t)(dest_temp % 10));  // Pressure Pascals
+                lv_label_set_text(ui_Label_Skin, buf);
 
-                lv_chart_set_next_value(ui_Screen2_Chart1, ser_temps, dest_temp / 100);
-                lv_chart_set_next_value(ui_Screen3_Chart1, ser_humid, body_temp / 100);
-                lv_chart_set_next_value(ui_Screen4_Chart1, ser_air_q, gas / 10000);
+                sprintf(buf, "%2d.%01d", (int16_t)(body_temp / 100), (uint8_t)(body_temp % 10));  // Pressure Pascals
+                lv_label_set_text(ui_Label_Air, buf);
+
+                //lv_chart_set_next_value(ui_Chart2, ser_temps, dest_temp / 100);
+                //lv_chart_set_next_value(ui_Chart2, ser_humid, body_temp / 100);
+
+                lv_chart_set_next_value(ui_Chart2, ui_Chart2_series_1, dest_temp / 100);
+                lv_chart_set_next_value(ui_Chart2, ui_Chart2_series_2, body_temp / 100);
+                //lv_chart_set_next_value(ui_Screen4_Chart1, ser_air_q, gas / 10000);
 
                 temp_cnt = 0;
                 Send_Temp();          
@@ -380,7 +386,7 @@ void Task_TFT(void *pvParameters)
                 temp_cnt++;
             }
         }
-        delay(10); 
+        delay(5); 
     }
 }
 
